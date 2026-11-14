@@ -1,94 +1,562 @@
-<!doctype html>
+
+<!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#111318">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>BIN IMAGE ENGINE — Device Test</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BIN IMAGE ENGINE</title>
+
 <style>
-:root{color-scheme:dark;--bg:#111318;--panel:#1b1e26;--line:#303541;--muted:#a5adbd;--accent:#a78bfa}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f5f5f7;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
-main{max-width:680px;margin:0 auto;padding:22px 0 40px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}.logo{width:44px;height:44px;border-radius:14px;background:#30264d;display:grid;place-items:center;font-size:24px}.sub{color:var(--muted);font-size:13px;margin-top:3px}
-h1{font-size:21px;margin:0}h2{font-size:17px;margin:0 0 12px}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:17px;margin:14px 0}
-.status{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}.status:last-child{border:0}.label{color:var(--muted)}.value{font-weight:650;text-align:right;max-width:58%;overflow-wrap:anywhere}
-button{border:0;border-radius:14px;padding:15px 18px;background:#8b5cf6;color:white;font-weight:700;font-size:16px;width:100%;margin-top:8px}
-.note{font-size:13px;line-height:1.5;color:var(--muted)}.pill{display:inline-block;padding:5px 9px;border-radius:99px;background:#282d38;font-size:12px;color:#d7dbea}
-.good{color:#86efac}.bad{color:#fca5a5}.warn{color:#fcd34d}
-#log{white-space:pre-wrap;font:12px ui-monospace,monospace;color:#cbd5e1;max-height:180px;overflow:auto}
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 22px;
+  background: #101116;
+  color: #f2f3f7;
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+main {
+  max-width: 650px;
+  margin: auto;
+}
+
+h1 {
+  font-size: 30px;
+  letter-spacing: -1px;
+}
+
+p {
+  color: #adb3c2;
+  line-height: 1.5;
+}
+
+.panel {
+  background: #1b1d26;
+  border: 1px solid #343743;
+  border-radius: 17px;
+  padding: 19px;
+  margin-top: 18px;
+}
+
+button, .file-button {
+  display: block;
+  width: 100%;
+  padding: 17px;
+  margin: 12px 0;
+  border: 0;
+  border-radius: 14px;
+  background: #7455e8;
+  color: white;
+  font-size: 16px;
+  font-weight: 750;
+  text-align: center;
+}
+
+button:disabled {
+  opacity: .4;
+}
+
+input[type=file] {
+  display: none;
+}
+
+#preview {
+  display: none;
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  border-radius: 12px;
+  margin-top: 15px;
+  background: #101116;
+}
+
+#status {
+  font-weight: 700;
+}
+
+.good { color: #8ce5ad; }
+.bad { color: #ff8585; }
+.wait { color: #e8c77b; }
+
+.result {
+  padding: 13px;
+  margin: 10px 0;
+  background: #252833;
+  border-radius: 11px;
+}
+
+.result strong {
+  display: block;
+  font-size: 16px;
+}
+
+.result small {
+  color: #adb3c2;
+}
+
+.bar {
+  height: 6px;
+  background: #3a3d4a;
+  border-radius: 10px;
+  margin-top: 9px;
+  overflow: hidden;
+}
+
+.bar div {
+  height: 100%;
+  background: #8c72f2;
+  width: 0%;
+}
+
+#log {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: #adb3c2;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+footer {
+  color: #737989;
+  font-size: 12px;
+  margin: 25px 0;
+}
 </style>
 </head>
+
 <body>
 <main>
-  <div class="brand">
-    <div class="logo">◈</div>
-    <div><h1>BIN IMAGE ENGINE</h1><div class="sub">Mobile Edition · Device compatibility test</div></div>
-  </div>
-  <div class="card">
-    <span class="pill">PHASE 01 · DEVICE CHECK</span>
-    <h2 style="margin-top:13px">Проверка возможностей iPhone</h2>
-    <p class="note">Эта страница ничего не генерирует и не отправляет данные на сервер. Она проверяет браузер, GPU и локальное хранилище.</p>
-    <button id="run">Запустить проверку</button>
-  </div>
-  <div class="card">
-    <h2>Результаты</h2>
-    <div class="status"><span class="label">Браузер</span><span class="value" id="browser">Ожидание</span></div>
-    <div class="status"><span class="label">WebGPU API</span><span class="value" id="gpu">Не проверено</span></div>
-    <div class="status"><span class="label">GPU-адаптер</span><span class="value" id="adapter">Не проверено</span></div>
-    <div class="status"><span class="label">GPU-вычисление</span><span class="value" id="compute">Не проверено</span></div>
-    <div class="status"><span class="label">Локальное хранилище</span><span class="value" id="storage">Не проверено</span></div>
-    <div class="status"><span class="label">Оценка доступного места</span><span class="value" id="quota">Не проверено</span></div>
-    <div class="status"><span class="label">Сервисная оболочка</span><span class="value" id="worker">Проверка…</span></div>
-  </div>
-  <div class="card">
-    <h2>Журнал проверки</h2><div id="log">Открой страницу в Safari и нажми «Запустить проверку».</div>
-  </div>
-  <p class="note">Важно: успешный WebGPU-тест ещё не гарантирует, что Stable Diffusion поместится в память Safari. Следующий этап — отдельная проверка загрузки и выполнения компактной модели.</p>
+
+<h1>BIN IMAGE ENGINE</h1>
+<p>Mobile Edition — локальное распознавание изображений на iPhone.</p>
+
+<section class="panel">
+  <h2>1. Выбери фотографию</h2>
+
+  <label class="file-button" for="photo">
+    ВЫБРАТЬ ФОТОГРАФИЮ
+  </label>
+
+  <input id="photo" type="file" accept="image/*">
+
+  <img id="preview" alt="Выбранная фотография">
+
+  <p id="fileInfo">Фотография ещё не выбрана.</p>
+</section>
+
+<section class="panel">
+  <h2>2. Распознавание</h2>
+
+  <button id="run" disabled>
+    ЗАПУСТИТЬ BIN ENGINE
+  </button>
+
+  <p id="status" class="wait">
+    Ожидание фотографии...
+  </p>
+
+  <div id="results"></div>
+</section>
+
+<section class="panel">
+  <h2>Журнал работы</h2>
+  <pre id="log">BIN Engine готов к запуску.</pre>
+</section>
+
+<footer>
+  BIN IMAGE ENGINE · Mobile Edition
+  <br>
+  Inference: ONNX Runtime Web / WASM
+</footer>
+
 </main>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
+
 <script>
-const $=id=>document.getElementById(id);
-function log(s){$("log").textContent += "\n"+s}
-function set(id,text,cls=""){const e=$(id);e.textContent=text;e.className="value "+cls}
-function fmt(n){if(!Number.isFinite(n))return "Неизвестно";return (n/1024**3).toFixed(2)+" ГБ"}
-async function run(){
-  $("log").textContent="Начинаю диагностику…";
-  set("browser",navigator.userAgent.includes("iPhone")?"iPhone / iOS":navigator.userAgent.slice(0,55));
-  log("User agent: "+navigator.userAgent);
-  if(!("gpu" in navigator)){set("gpu","Недоступен","bad");set("adapter","Нет","bad");set("compute","Пропущено","warn");log("navigator.gpu отсутствует.");}
-  else{
-    set("gpu","API доступен","good");log("WebGPU API найден.");
-    try{
-      const adapter=await navigator.gpu.requestAdapter();
-      if(!adapter){set("adapter","Адаптер не получен","bad");set("compute","Пропущено","warn");log("requestAdapter() вернул null.");}
-      else{
-        let info="Доступен";
-        try{const i=await adapter.requestAdapterInfo?.();if(i){const bits=[i.vendor,i.architecture,i.device].filter(Boolean);if(bits.length)info=bits.join(" · ");}}catch(e){}
-        set("adapter",info,"good");log("GPU adapter получен.");
-        try{
-          const device=await adapter.requestDevice();
-          const shader=device.createShaderModule({code:`@compute @workgroup_size(1) fn main() {}`});
-          const pipeline=device.createComputePipeline({layout:"auto",compute:{module:shader,entryPoint:"main"}});
-          const encoder=device.createCommandEncoder();encoder.beginComputePass().end();device.queue.submit([encoder.finish()]);
-          await device.queue.onSubmittedWorkDone();
-          set("compute","Успешно","good");log("Минимальная compute-команда выполнена.");
-          device.destroy();
-        }catch(e){set("compute","Ошибка выполнения","bad");log("GPU compute error: "+e.message);}
-      }
-    }catch(e){set("adapter","Ошибка доступа","bad");set("compute","Не выполнено","bad");log("Adapter error: "+e.message);}
-  }
-  try{
-    if(!navigator.storage?.estimate)throw new Error("Storage estimate API недоступен");
-    const s=await navigator.storage.estimate();
-    set("storage","Доступно","good");
-    set("quota",fmt(s.quota)+" (оценка)","good");
-    log("Storage quota: "+fmt(s.quota)+", usage: "+fmt(s.usage||0));
-  }catch(e){set("storage","Ограничено","warn");set("quota","Браузер не сообщил","warn");log("Storage error: "+e.message);}
+const $ = id => document.getElementById(id);
+
+const MODEL_URL =
+"https://huggingface.co/webnn/mobilenet-v2/resolve/main/onnx/mobilenetv2-10.onnx";
+
+const LABELS_URL =
+"https://s3.amazonaws.com/onnx-model-zoo/synset.txt";
+
+const FALLBACK_LABELS_URL =
+"https://raw.githubusercontent.com/anishathalye/imagenet-simple-labels/master/imagenet-simple-labels.json";
+
+const CDN =
+"https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+
+let selectedImage = null;
+let modelBytes = null;
+let session = null;
+let labels = null;
+let busy = false;
+
+function log(message) {
+  $("log").textContent += "\n" + message;
 }
-$("run").addEventListener("click",run);
-if("serviceWorker" in navigator){
-  navigator.serviceWorker.register("./sw.js").then(()=>set("worker","Зарегистрирован","good")).catch(e=>{set("worker","Недоступен","warn");log("Service worker: "+e.message)});
-}else set("worker","Не поддерживается","warn");
+
+function status(message, type = "wait") {
+  $("status").textContent = message;
+  $("status").className = type;
+}
+
+// Загружаем названия 1000 классов ImageNet.
+async function loadLabels() {
+  if (labels) return labels;
+
+  log("Загружаю названия классов...");
+
+  try {
+    const response = await fetch(LABELS_URL);
+
+    if (!response.ok) {
+      throw new Error("Labels HTTP " + response.status);
+    }
+
+    const text = await response.text();
+
+    labels = text.trim().split(/\r?\n/).map(line => {
+      return line.replace(/^n\d+\s+/, "").trim();
+    });
+
+    if (labels.length !== 1000) {
+      throw new Error("Неверное количество классов");
+    }
+
+    log("Загружено классов: " + labels.length);
+    return labels;
+
+  } catch (error) {
+    log("Основной список классов недоступен.");
+
+    try {
+      const response = await fetch(FALLBACK_LABELS_URL);
+
+      if (!response.ok) {
+        throw new Error("Fallback HTTP " + response.status);
+      }
+
+      labels = await response.json();
+
+      log("Загружен запасной список классов.");
+      return labels;
+
+    } catch (fallbackError) {
+      log("Названия классов недоступны.");
+      labels = null;
+      return null;
+    }
+  }
+}
+
+// Загружаем модель один раз.
+async function loadModel() {
+  if (session) return session;
+
+  if (!window.ort) {
+    throw new Error("ONNX Runtime не загрузился.");
+  }
+
+  ort.env.wasm.wasmPaths = CDN;
+  ort.env.wasm.numThreads = 1;
+  ort.env.wasm.simd = true;
+
+  log("ONNX Runtime: " + ort.version);
+
+  if (!modelBytes) {
+    log("Скачиваю MobileNetV2...");
+
+    const response = await fetch(MODEL_URL);
+
+    if (!response.ok) {
+      throw new Error("Ошибка загрузки модели: HTTP " + response.status);
+    }
+
+    modelBytes = await response.arrayBuffer();
+
+    log(
+      "Модель загружена: " +
+      (modelBytes.byteLength / 1048576).toFixed(2) +
+      " MB"
+    );
+  }
+
+  log("Создаю WASM inference session...");
+
+  const start = performance.now();
+
+  session = await ort.InferenceSession.create(
+    modelBytes,
+    {
+      executionProviders: ["wasm"],
+      graphOptimizationLevel: "all"
+    }
+  );
+
+  log(
+    "Сессия создана за " +
+    (performance.now() - start).toFixed(1) +
+    " ms"
+  );
+
+  log("Вход: " + session.inputNames[0]);
+  log("Выход: " + session.outputNames[0]);
+
+  return session;
+}
+
+// Подготовка изображения:
+// Resize + Center Crop + RGB + ImageNet normalization.
+function preprocess(image) {
+  const width = image.naturalWidth;
+  const height = image.naturalHeight;
+
+  if (!width || !height) {
+    throw new Error("Не удалось прочитать изображение.");
+  }
+
+  const cropSize = Math.min(width, height) * (224 / 256);
+
+  const sx = (width - cropSize) / 2;
+  const sy = (height - cropSize) / 2;
+
+  const canvas = document.createElement("canvas");
+  canvas.width = 224;
+  canvas.height = 224;
+
+  const ctx = canvas.getContext("2d", {
+    willReadFrequently: true
+  });
+
+  ctx.drawImage(
+    image,
+    sx, sy,
+    cropSize, cropSize,
+    0, 0,
+    224, 224
+  );
+
+  const pixels = ctx.getImageData(
+    0, 0, 224, 224
+  ).data;
+
+  const data = new Float32Array(3 * 224 * 224);
+
+  const mean = [0.485, 0.456, 0.406];
+  const std = [0.229, 0.224, 0.225];
+
+  const plane = 224 * 224;
+
+  for (let i = 0; i < plane; i++) {
+    const pixel = i * 4;
+
+    data[i] =
+      (pixels[pixel] / 255 - mean[0]) / std[0];
+
+    data[plane + i] =
+      (pixels[pixel + 1] / 255 - mean[1]) / std[1];
+
+    data[plane * 2 + i] =
+      (pixels[pixel + 2] / 255 - mean[2]) / std[2];
+  }
+
+  return new ort.Tensor(
+    "float32",
+    data,
+    [1, 3, 224, 224]
+  );
+}
+
+// Softmax: преобразуем выходные оценки в проценты.
+function softmax(values) {
+  const max = Math.max(...values);
+  const exps = values.map(v => Math.exp(v - max));
+  const sum = exps.reduce((a, b) => a + b, 0);
+
+  return exps.map(v => v / sum);
+}
+
+// Находим пять лучших результатов.
+function getTopResults(output) {
+  const scores = softmax(Array.from(output.data));
+
+  const sorted = scores
+    .map((score, index) => ({ score, index }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+  return sorted;
+}
+
+function displayResults(results) {
+  $("results").innerHTML = "";
+
+  for (const item of results) {
+    const name = labels
+      ? labels[item.index] || ("Класс " + item.index)
+      : ("Класс №" + item.index);
+
+    const percent = item.score * 100;
+
+    const block = document.createElement("div");
+    block.className = "result";
+
+    const title = document.createElement("strong");
+    title.textContent = name;
+
+    const detail = document.createElement("small");
+    detail.textContent =
+      "Класс #" + item.index +
+      " · Оценка: " + percent.toFixed(2) + "%";
+
+    const bar = document.createElement("div");
+    bar.className = "bar";
+
+    const fill = document.createElement("div");
+    fill.style.width = Math.min(100, percent) + "%";
+
+    bar.appendChild(fill);
+    block.appendChild(title);
+    block.appendChild(detail);
+    block.appendChild(bar);
+
+    $("results").appendChild(block);
+  }
+}
+
+// Основной запуск.
+async function recognize() {
+  if (busy || !selectedImage) return;
+
+  busy = true;
+  $("run").disabled = true;
+  $("results").innerHTML = "";
+  $("log").textContent = "Запуск BIN Engine...";
+
+  try {
+    status("Загрузка модели...", "wait");
+
+    const currentSession = await loadModel();
+
+    await loadLabels();
+
+    status("Обработка фотографии...", "wait");
+
+    log("Подготавливаю RGB-тензор...");
+
+    const input = preprocess(selectedImage);
+
+    log("Тензор: " + input.dims.join(" × "));
+    log("Запускаю inference через WASM...");
+
+    const start = performance.now();
+
+    const output = await currentSession.run({
+      [currentSession.inputNames[0]]: input
+    });
+
+    const elapsed = performance.now() - start;
+
+    const resultTensor =
+      output[currentSession.outputNames[0]];
+
+    if (!resultTensor) {
+      throw new Error("Модель не вернула выходной тензор.");
+    }
+
+    if (resultTensor.data.length !== 1000) {
+      throw new Error(
+        "Ожидалось 1000 классов, получено: " +
+        resultTensor.data.length
+      );
+    }
+
+    const results = getTopResults(resultTensor);
+
+    displayResults(results);
+
+    log("Распознавание завершено.");
+    log("Время inference: " + elapsed.toFixed(1) + " ms");
+    log("Количество классов: " + resultTensor.data.length);
+    log("Лучший результат: " + results[0].score.toFixed(4));
+
+    status(
+      "УСПЕХ — MobileNetV2 / WASM",
+      "good"
+    );
+
+  } catch (error) {
+    status("ОШИБКА", "bad");
+    log("ОШИБКА: " + (error.message || String(error)));
+
+    console.error(error);
+
+    if (session) {
+      try {
+        await session.release();
+      } catch(e) {}
+
+      session = null;
+    }
+
+  } finally {
+    busy = false;
+    $("run").disabled = !selectedImage;
+  }
+}
+
+// Выбор фотографии.
+$("photo").addEventListener("change", event => {
+  const file = event.target.files[0];
+
+  if (!file) return;
+
+  if (!file.type.startsWith("image/")) {
+    status("Выбранный файл не является изображением.", "bad");
+    return;
+  }
+
+  if (selectedImage && selectedImage.src) {
+    URL.revokeObjectURL(selectedImage.src);
+  }
+
+  const url = URL.createObjectURL(file);
+
+  const image = new Image();
+
+  image.onload = () => {
+    selectedImage = image;
+
+    $("preview").src = url;
+    $("preview").style.display = "block";
+
+    $("fileInfo").textContent =
+      file.name + " · " +
+      image.naturalWidth + " × " +
+      image.naturalHeight;
+
+    $("run").disabled = false;
+
+    status("Фотография готова к распознаванию.", "good");
+    log("Фотография загружена.");
+  };
+
+  image.onerror = () => {
+    status("Не удалось открыть фотографию.", "bad");
+    log("Ошибка декодирования изображения.");
+    URL.revokeObjectURL(url);
+  };
+
+  image.src = url;
+});
+
+$("run").addEventListener("click", recognize);
+
 </script>
 </body>
 </html>
