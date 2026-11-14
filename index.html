@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111318">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>BIN IMAGE ENGINE — Device Test</title>
+<style>
+:root{color-scheme:dark;--bg:#111318;--panel:#1b1e26;--line:#303541;--muted:#a5adbd;--accent:#a78bfa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:#f5f5f7;font:16px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;padding:env(safe-area-inset-top) 16px env(safe-area-inset-bottom)}
+main{max-width:680px;margin:0 auto;padding:22px 0 40px}.brand{display:flex;align-items:center;gap:12px;margin-bottom:24px}.logo{width:44px;height:44px;border-radius:14px;background:#30264d;display:grid;place-items:center;font-size:24px}.sub{color:var(--muted);font-size:13px;margin-top:3px}
+h1{font-size:21px;margin:0}h2{font-size:17px;margin:0 0 12px}.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:17px;margin:14px 0}
+.status{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}.status:last-child{border:0}.label{color:var(--muted)}.value{font-weight:650;text-align:right;max-width:58%;overflow-wrap:anywhere}
+button{border:0;border-radius:14px;padding:15px 18px;background:#8b5cf6;color:white;font-weight:700;font-size:16px;width:100%;margin-top:8px}
+.note{font-size:13px;line-height:1.5;color:var(--muted)}.pill{display:inline-block;padding:5px 9px;border-radius:99px;background:#282d38;font-size:12px;color:#d7dbea}
+.good{color:#86efac}.bad{color:#fca5a5}.warn{color:#fcd34d}
+#log{white-space:pre-wrap;font:12px ui-monospace,monospace;color:#cbd5e1;max-height:180px;overflow:auto}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">
+    <div class="logo">◈</div>
+    <div><h1>BIN IMAGE ENGINE</h1><div class="sub">Mobile Edition · Device compatibility test</div></div>
+  </div>
+  <div class="card">
+    <span class="pill">PHASE 01 · DEVICE CHECK</span>
+    <h2 style="margin-top:13px">Проверка возможностей iPhone</h2>
+    <p class="note">Эта страница ничего не генерирует и не отправляет данные на сервер. Она проверяет браузер, GPU и локальное хранилище.</p>
+    <button id="run">Запустить проверку</button>
+  </div>
+  <div class="card">
+    <h2>Результаты</h2>
+    <div class="status"><span class="label">Браузер</span><span class="value" id="browser">Ожидание</span></div>
+    <div class="status"><span class="label">WebGPU API</span><span class="value" id="gpu">Не проверено</span></div>
+    <div class="status"><span class="label">GPU-адаптер</span><span class="value" id="adapter">Не проверено</span></div>
+    <div class="status"><span class="label">GPU-вычисление</span><span class="value" id="compute">Не проверено</span></div>
+    <div class="status"><span class="label">Локальное хранилище</span><span class="value" id="storage">Не проверено</span></div>
+    <div class="status"><span class="label">Оценка доступного места</span><span class="value" id="quota">Не проверено</span></div>
+    <div class="status"><span class="label">Сервисная оболочка</span><span class="value" id="worker">Проверка…</span></div>
+  </div>
+  <div class="card">
+    <h2>Журнал проверки</h2><div id="log">Открой страницу в Safari и нажми «Запустить проверку».</div>
+  </div>
+  <p class="note">Важно: успешный WebGPU-тест ещё не гарантирует, что Stable Diffusion поместится в память Safari. Следующий этап — отдельная проверка загрузки и выполнения компактной модели.</p>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+function log(s){$("log").textContent += "\n"+s}
+function set(id,text,cls=""){const e=$(id);e.textContent=text;e.className="value "+cls}
+function fmt(n){if(!Number.isFinite(n))return "Неизвестно";return (n/1024**3).toFixed(2)+" ГБ"}
+async function run(){
+  $("log").textContent="Начинаю диагностику…";
+  set("browser",navigator.userAgent.includes("iPhone")?"iPhone / iOS":navigator.userAgent.slice(0,55));
+  log("User agent: "+navigator.userAgent);
+  if(!("gpu" in navigator)){set("gpu","Недоступен","bad");set("adapter","Нет","bad");set("compute","Пропущено","warn");log("navigator.gpu отсутствует.");}
+  else{
+    set("gpu","API доступен","good");log("WebGPU API найден.");
+    try{
+      const adapter=await navigator.gpu.requestAdapter();
+      if(!adapter){set("adapter","Адаптер не получен","bad");set("compute","Пропущено","warn");log("requestAdapter() вернул null.");}
+      else{
+        let info="Доступен";
+        try{const i=await adapter.requestAdapterInfo?.();if(i){const bits=[i.vendor,i.architecture,i.device].filter(Boolean);if(bits.length)info=bits.join(" · ");}}catch(e){}
+        set("adapter",info,"good");log("GPU adapter получен.");
+        try{
+          const device=await adapter.requestDevice();
+          const shader=device.createShaderModule({code:`@compute @workgroup_size(1) fn main() {}`});
+          const pipeline=device.createComputePipeline({layout:"auto",compute:{module:shader,entryPoint:"main"}});
+          const encoder=device.createCommandEncoder();encoder.beginComputePass().end();device.queue.submit([encoder.finish()]);
+          await device.queue.onSubmittedWorkDone();
+          set("compute","Успешно","good");log("Минимальная compute-команда выполнена.");
+          device.destroy();
+        }catch(e){set("compute","Ошибка выполнения","bad");log("GPU compute error: "+e.message);}
+      }
+    }catch(e){set("adapter","Ошибка доступа","bad");set("compute","Не выполнено","bad");log("Adapter error: "+e.message);}
+  }
+  try{
+    if(!navigator.storage?.estimate)throw new Error("Storage estimate API недоступен");
+    const s=await navigator.storage.estimate();
+    set("storage","Доступно","good");
+    set("quota",fmt(s.quota)+" (оценка)","good");
+    log("Storage quota: "+fmt(s.quota)+", usage: "+fmt(s.usage||0));
+  }catch(e){set("storage","Ограничено","warn");set("quota","Браузер не сообщил","warn");log("Storage error: "+e.message);}
+}
+$("run").addEventListener("click",run);
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("./sw.js").then(()=>set("worker","Зарегистрирован","good")).catch(e=>{set("worker","Недоступен","warn");log("Service worker: "+e.message)});
+}else set("worker","Не поддерживается","warn");
+</script>
+</body>
+</html>
