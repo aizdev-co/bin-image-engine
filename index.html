@@ -3,560 +3,460 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>BIN IMAGE ENGINE</title>
-
 <style>
 * { box-sizing: border-box; }
-
 body {
   margin: 0;
-  padding: 22px;
-  background: #101116;
-  color: #f2f3f7;
+  padding: 20px;
+  background: #101216;
+  color: #e9edf2;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
 }
-
-main {
-  max-width: 650px;
-  margin: auto;
-}
-
-h1 {
-  font-size: 30px;
-  letter-spacing: -1px;
-}
-
-p {
-  color: #adb3c2;
-  line-height: 1.5;
-}
-
+main { max-width: 650px; margin: auto; }
+h1 { font-size: 25px; margin-bottom: 5px; }
+.sub { color: #929ba8; font-size: 13px; margin-bottom: 24px; }
 .panel {
-  background: #1b1d26;
-  border: 1px solid #343743;
-  border-radius: 17px;
-  padding: 19px;
-  margin-top: 18px;
-}
-
-button, .file-button {
-  display: block;
-  width: 100%;
-  padding: 17px;
-  margin: 12px 0;
-  border: 0;
+  background: #1b2028;
+  border: 1px solid #303946;
   border-radius: 14px;
-  background: #7455e8;
+  padding: 16px;
+  margin: 14px 0;
+}
+button, .file {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 10px;
+  padding: 14px;
+  background: #8b5cf6;
   color: white;
-  font-size: 16px;
-  font-weight: 750;
+  font-size: 15px;
+  font-weight: 600;
   text-align: center;
+  cursor: pointer;
 }
-
-button:disabled {
-  opacity: .4;
-}
-
-input[type=file] {
-  display: none;
-}
-
-#preview {
+.file { background: #303947; margin-bottom: 12px; }
+input { display: none; }
+button:disabled { opacity: .5; }
+img {
   display: none;
   width: 100%;
-  max-height: 360px;
+  max-height: 320px;
   object-fit: contain;
-  border-radius: 12px;
-  margin-top: 15px;
-  background: #101116;
-}
-
-#status {
-  font-weight: 700;
-}
-
-.good { color: #8ce5ad; }
-.bad { color: #ff8585; }
-.wait { color: #e8c77b; }
-
-.result {
-  padding: 13px;
-  margin: 10px 0;
-  background: #252833;
-  border-radius: 11px;
-}
-
-.result strong {
-  display: block;
-  font-size: 16px;
-}
-
-.result small {
-  color: #adb3c2;
-}
-
-.bar {
-  height: 6px;
-  background: #3a3d4a;
   border-radius: 10px;
-  margin-top: 9px;
-  overflow: hidden;
+  margin-top: 12px;
 }
-
-.bar div {
-  height: 100%;
-  background: #8c72f2;
-  width: 0%;
+#status { color: #a9b5c4; font-size: 13px; }
+#results { line-height: 1.6; }
+.result {
+  padding: 10px 0;
+  border-bottom: 1px solid #303946;
 }
-
+.result:last-child { border: 0; }
+.score { color: #a78bfa; float: right; }
 #log {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  color: #adb3c2;
-  font-size: 12px;
-  line-height: 1.6;
+  color: #9eabb9;
+  font: 12px/1.6 monospace;
 }
-
-footer {
-  color: #737989;
-  font-size: 12px;
-  margin: 25px 0;
-}
+.small { color: #8995a3; font-size: 12px; }
 </style>
 </head>
-
 <body>
 <main>
+  <h1>BIN IMAGE ENGINE</h1>
+  <div class="sub">Mobile Edition · Local inference · WASM</div>
 
-<h1>BIN IMAGE ENGINE</h1>
-<p>Mobile Edition — локальное распознавание изображений на iPhone.</p>
+  <div class="panel">
+    <label class="file" for="photo">Выбрать фотографию</label>
+    <input id="photo" type="file" accept="image/*">
+    <img id="preview" alt="Предпросмотр">
+    <p id="status">Загрузка движка...</p>
+    <button id="run" disabled>Распознать изображение</button>
+  </div>
 
-<section class="panel">
-  <h2>1. Выбери фотографию</h2>
+  <div class="panel">
+    <b>Результаты</b>
+    <div id="results" class="small">Пока нет результатов.</div>
+  </div>
 
-  <label class="file-button" for="photo">
-    ВЫБРАТЬ ФОТОГРАФИЮ
-  </label>
-
-  <input id="photo" type="file" accept="image/*">
-
-  <img id="preview" alt="Выбранная фотография">
-
-  <p id="fileInfo">Фотография ещё не выбрана.</p>
-</section>
-
-<section class="panel">
-  <h2>2. Распознавание</h2>
-
-  <button id="run" disabled>
-    ЗАПУСТИТЬ BIN ENGINE
-  </button>
-
-  <p id="status" class="wait">
-    Ожидание фотографии...
-  </p>
-
-  <div id="results"></div>
-</section>
-
-<section class="panel">
-  <h2>Журнал работы</h2>
-  <pre id="log">BIN Engine готов к запуску.</pre>
-</section>
-
-<footer>
-  BIN IMAGE ENGINE · Mobile Edition
-  <br>
-  Inference: ONNX Runtime Web / WASM
-</footer>
-
+  <div class="panel">
+    <b>Журнал BIN Engine</b>
+    <p id="log">Инициализация...</p>
+  </div>
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
-
 <script>
-const $ = id => document.getElementById(id);
+"use strict";
 
 const MODEL_URL =
-"https://huggingface.co/webnn/mobilenet-v2/resolve/main/onnx/mobilenetv2-10.onnx";
+  "https://huggingface.co/webnn/mobilenet-v2/resolve/main/onnx/mobilenetv2-10.onnx";
 
 const LABELS_URL =
-"https://s3.amazonaws.com/onnx-model-zoo/synset.txt";
+  "https://raw.githubusercontent.com/anishathalye/imagenet-simple-labels/master/imagenet-simple-labels.json";
 
-const FALLBACK_LABELS_URL =
-"https://raw.githubusercontent.com/anishathalye/imagenet-simple-labels/master/imagenet-simple-labels.json";
+const DB_NAME = "BIN_ENGINE_STORAGE";
+const DB_VERSION = 1;
+const MODEL_KEY = "mobilenetv2-10-v1";
+const LABELS_KEY = "imagenet-labels-v1";
 
-const CDN =
-"https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
+const $ = id => document.getElementById(id);
 
-let selectedImage = null;
-let modelBytes = null;
 let session = null;
+let selectedImage = null;
 let labels = null;
-let busy = false;
 
 function log(message) {
   $("log").textContent += "\n" + message;
 }
 
-function status(message, type = "wait") {
+function status(message) {
   $("status").textContent = message;
-  $("status").className = type;
 }
 
-// Загружаем названия 1000 классов ImageNet.
+function openDB() {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) {
+      reject(new Error("IndexedDB недоступна"));
+      return;
+    }
+
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains("assets")) {
+        db.createObjectStore("assets", { keyPath: "key" });
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function dbGet(key) {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("assets", "readonly");
+    const request = tx.objectStore("assets").get(key);
+
+    request.onsuccess = () => {
+      resolve(request.result ? request.result.value : null);
+    };
+
+    request.onerror = () => reject(request.error);
+    tx.oncomplete = () => db.close();
+  });
+}
+
+async function dbPut(key, value) {
+  const db = await openDB();
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("assets", "readwrite");
+    tx.objectStore("assets").put({ key, value });
+
+    tx.oncomplete = () => {
+      db.close();
+      resolve(true);
+    };
+
+    tx.onerror = () => {
+      db.close();
+      reject(tx.error);
+    };
+
+    tx.onabort = () => {
+      db.close();
+      reject(tx.error || new Error("Запись отменена"));
+    };
+  });
+}
+
+async function loadModelBytes() {
+  try {
+    const cached = await dbGet(MODEL_KEY);
+
+    if (cached instanceof ArrayBuffer && cached.byteLength > 0) {
+      log("Модель найдена в IndexedDB.");
+      log("Размер: " + (cached.byteLength / 1048576).toFixed(2) + " MB");
+      return cached;
+    }
+  } catch (error) {
+    log("Кэш недоступен: " + error.message);
+  }
+
+  log("Скачиваю MobileNetV2...");
+  status("Скачивание модели...");
+
+  const response = await fetch(MODEL_URL);
+
+  if (!response.ok) {
+    throw new Error("Не удалось скачать модель: HTTP " + response.status);
+  }
+
+  const buffer = await response.arrayBuffer();
+
+  if (!buffer.byteLength) {
+    throw new Error("Получена пустая модель");
+  }
+
+  log("Модель загружена: " +
+      (buffer.byteLength / 1048576).toFixed(2) + " MB");
+
+  try {
+    await dbPut(MODEL_KEY, buffer);
+    log("Модель сохранена в IndexedDB.");
+  } catch (error) {
+    log("Не удалось сохранить модель: " + error.message);
+    log("Продолжаю работу без постоянного кэша.");
+  }
+
+  return buffer;
+}
+
 async function loadLabels() {
-  if (labels) return labels;
+  try {
+    const cached = await dbGet(LABELS_KEY);
+
+    if (Array.isArray(cached) && cached.length === 1000) {
+      log("Названия классов загружены из IndexedDB.");
+      return cached;
+    }
+  } catch (error) {
+    log("Кэш названий недоступен.");
+  }
 
   log("Загружаю названия классов...");
 
+  const response = await fetch(LABELS_URL);
+
+  if (!response.ok) {
+    throw new Error("Не удалось загрузить список классов");
+  }
+
+  const data = await response.json();
+
+  if (!Array.isArray(data) || data.length !== 1000) {
+    throw new Error("Неверный формат списка классов");
+  }
+
   try {
-    const response = await fetch(LABELS_URL);
-
-    if (!response.ok) {
-      throw new Error("Labels HTTP " + response.status);
-    }
-
-    const text = await response.text();
-
-    labels = text.trim().split(/\r?\n/).map(line => {
-      return line.replace(/^n\d+\s+/, "").trim();
-    });
-
-    if (labels.length !== 1000) {
-      throw new Error("Неверное количество классов");
-    }
-
-    log("Загружено классов: " + labels.length);
-    return labels;
-
+    await dbPut(LABELS_KEY, data);
+    log("Названия классов сохранены в IndexedDB.");
   } catch (error) {
-    log("Основной список классов недоступен.");
+    log("Не удалось сохранить названия классов.");
+  }
 
-    try {
-      const response = await fetch(FALLBACK_LABELS_URL);
+  return data;
+}
 
-      if (!response.ok) {
-        throw new Error("Fallback HTTP " + response.status);
+async function initialize() {
+  try {
+    log("Запуск BIN Engine...");
+
+    if (!window.ort) {
+      throw new Error("ONNX Runtime не загрузился");
+    }
+
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.simd = true;
+
+    log("ONNX Runtime загружен.");
+
+    const modelBytes = await loadModelBytes();
+
+    status("Создание WASM inference session...");
+    log("Создаю WASM inference session...");
+
+    const start = performance.now();
+
+    session = await ort.InferenceSession.create(
+      new Uint8Array(modelBytes),
+      {
+        executionProviders: ["wasm"],
+        graphOptimizationLevel: "all"
       }
-
-      labels = await response.json();
-
-      log("Загружен запасной список классов.");
-      return labels;
-
-    } catch (fallbackError) {
-      log("Названия классов недоступны.");
-      labels = null;
-      return null;
-    }
-  }
-}
-
-// Загружаем модель один раз.
-async function loadModel() {
-  if (session) return session;
-
-  if (!window.ort) {
-    throw new Error("ONNX Runtime не загрузился.");
-  }
-
-  ort.env.wasm.wasmPaths = CDN;
-  ort.env.wasm.numThreads = 1;
-  ort.env.wasm.simd = true;
-
-  log("ONNX Runtime: " + ort.version);
-
-  if (!modelBytes) {
-    log("Скачиваю MobileNetV2...");
-
-    const response = await fetch(MODEL_URL);
-
-    if (!response.ok) {
-      throw new Error("Ошибка загрузки модели: HTTP " + response.status);
-    }
-
-    modelBytes = await response.arrayBuffer();
-
-    log(
-      "Модель загружена: " +
-      (modelBytes.byteLength / 1048576).toFixed(2) +
-      " MB"
     );
+
+    log("Сессия создана за " +
+        (performance.now() - start).toFixed(1) + " ms");
+
+    log("Вход: " + session.inputNames[0]);
+    log("Выход: " + session.outputNames[0]);
+
+    labels = await loadLabels();
+
+    status("BIN Engine готов к работе.");
+    $("run").disabled = !selectedImage;
+
+    log("Инициализация завершена.");
+  } catch (error) {
+    status("Ошибка запуска: " + error.message);
+    log("ОШИБКА: " + error.stack);
   }
-
-  log("Создаю WASM inference session...");
-
-  const start = performance.now();
-
-  session = await ort.InferenceSession.create(
-    modelBytes,
-    {
-      executionProviders: ["wasm"],
-      graphOptimizationLevel: "all"
-    }
-  );
-
-  log(
-    "Сессия создана за " +
-    (performance.now() - start).toFixed(1) +
-    " ms"
-  );
-
-  log("Вход: " + session.inputNames[0]);
-  log("Выход: " + session.outputNames[0]);
-
-  return session;
 }
 
-// Подготовка изображения:
-// Resize + Center Crop + RGB + ImageNet normalization.
-function preprocess(image) {
-  const width = image.naturalWidth;
-  const height = image.naturalHeight;
+$("photo").addEventListener("change", event => {
+  const file = event.target.files[0];
+  if (!file) return;
 
-  if (!width || !height) {
-    throw new Error("Не удалось прочитать изображение.");
-  }
+  const url = URL.createObjectURL(file);
 
-  const cropSize = Math.min(width, height) * (224 / 256);
+  $("preview").src = url;
+  $("preview").style.display = "block";
 
-  const sx = (width - cropSize) / 2;
-  const sy = (height - cropSize) / 2;
+  selectedImage = new Image();
 
+  selectedImage.onload = () => {
+    status(session ? "Фотография готова." : "Фотография загружена. Ждём движок.");
+    $("run").disabled = !session;
+  };
+
+  selectedImage.onerror = () => {
+    status("Не удалось открыть фотографию.");
+    selectedImage = null;
+  };
+
+  selectedImage.src = url;
+});
+
+function prepareTensor(image) {
+  const size = 224;
   const canvas = document.createElement("canvas");
-  canvas.width = 224;
-  canvas.height = 224;
+  canvas.width = size;
+  canvas.height = size;
 
   const ctx = canvas.getContext("2d", {
     willReadFrequently: true
   });
 
-  ctx.drawImage(
-    image,
-    sx, sy,
-    cropSize, cropSize,
-    0, 0,
-    224, 224
+  const scale = Math.max(
+    size / image.naturalWidth,
+    size / image.naturalHeight
   );
 
-  const pixels = ctx.getImageData(
-    0, 0, 224, 224
-  ).data;
+  const width = image.naturalWidth * scale;
+  const height = image.naturalHeight * scale;
 
-  const data = new Float32Array(3 * 224 * 224);
+  const x = (size - width) / 2;
+  const y = (size - height) / 2;
+
+  ctx.drawImage(image, x, y, width, height);
+
+  const pixels = ctx.getImageData(0, 0, size, size).data;
+  const tensorData = new Float32Array(3 * size * size);
 
   const mean = [0.485, 0.456, 0.406];
   const std = [0.229, 0.224, 0.225];
 
-  const plane = 224 * 224;
-
-  for (let i = 0; i < plane; i++) {
-    const pixel = i * 4;
-
-    data[i] =
-      (pixels[pixel] / 255 - mean[0]) / std[0];
-
-    data[plane + i] =
-      (pixels[pixel + 1] / 255 - mean[1]) / std[1];
-
-    data[plane * 2 + i] =
-      (pixels[pixel + 2] / 255 - mean[2]) / std[2];
+  for (let i = 0; i < size * size; i++) {
+    for (let c = 0; c < 3; c++) {
+      const value = pixels[i * 4 + c] / 255;
+      tensorData[c * size * size + i] =
+        (value - mean[c]) / std[c];
+    }
   }
 
-  return new ort.Tensor(
-    "float32",
-    data,
-    [1, 3, 224, 224]
-  );
+  return new ort.Tensor("float32", tensorData, [1, 3, 224, 224]);
 }
 
-// Softmax: преобразуем выходные оценки в проценты.
 function softmax(values) {
-  const max = Math.max(...values);
-  const exps = values.map(v => Math.exp(v - max));
-  const sum = exps.reduce((a, b) => a + b, 0);
+  let max = -Infinity;
 
-  return exps.map(v => v / sum);
-}
-
-// Находим пять лучших результатов.
-function getTopResults(output) {
-  const scores = softmax(Array.from(output.data));
-
-  const sorted = scores
-    .map((score, index) => ({ score, index }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, 5);
-
-  return sorted;
-}
-
-function displayResults(results) {
-  $("results").innerHTML = "";
-
-  for (const item of results) {
-    const name = labels
-      ? labels[item.index] || ("Класс " + item.index)
-      : ("Класс №" + item.index);
-
-    const percent = item.score * 100;
-
-    const block = document.createElement("div");
-    block.className = "result";
-
-    const title = document.createElement("strong");
-    title.textContent = name;
-
-    const detail = document.createElement("small");
-    detail.textContent =
-      "Класс #" + item.index +
-      " · Оценка: " + percent.toFixed(2) + "%";
-
-    const bar = document.createElement("div");
-    bar.className = "bar";
-
-    const fill = document.createElement("div");
-    fill.style.width = Math.min(100, percent) + "%";
-
-    bar.appendChild(fill);
-    block.appendChild(title);
-    block.appendChild(detail);
-    block.appendChild(bar);
-
-    $("results").appendChild(block);
+  for (const value of values) {
+    if (value > max) max = value;
   }
+
+  const result = new Float64Array(values.length);
+  let sum = 0;
+
+  for (let i = 0; i < values.length; i++) {
+    result[i] = Math.exp(values[i] - max);
+    sum += result[i];
+  }
+
+  for (let i = 0; i < result.length; i++) {
+    result[i] /= sum;
+  }
+
+  return result;
 }
 
-// Основной запуск.
-async function recognize() {
-  if (busy || !selectedImage) return;
+async function classify() {
+  if (!session || !selectedImage) return;
 
-  busy = true;
   $("run").disabled = true;
-  $("results").innerHTML = "";
-  $("log").textContent = "Запуск BIN Engine...";
+  $("results").textContent = "Выполняется распознавание...";
+  status("Обрабатываю изображение...");
 
   try {
-    status("Загрузка модели...", "wait");
-
-    const currentSession = await loadModel();
-
-    await loadLabels();
-
-    status("Обработка фотографии...", "wait");
-
     log("Подготавливаю RGB-тензор...");
 
-    const input = preprocess(selectedImage);
+    const tensor = prepareTensor(selectedImage);
 
-    log("Тензор: " + input.dims.join(" × "));
+    log("Тензор: 1 × 3 × 224 × 224");
     log("Запускаю inference через WASM...");
 
     const start = performance.now();
 
-    const output = await currentSession.run({
-      [currentSession.inputNames[0]]: input
+    const output = await session.run({
+      [session.inputNames[0]]: tensor
     });
 
     const elapsed = performance.now() - start;
+    const raw = output[session.outputNames[0]].data;
 
-    const resultTensor =
-      output[currentSession.outputNames[0]];
+    log("Inference завершён.");
+    log("Время inference: " + elapsed.toFixed(1) + " ms");
+    log("Количество классов: " + raw.length);
 
-    if (!resultTensor) {
-      throw new Error("Модель не вернула выходной тензор.");
+    const probabilities = softmax(raw);
+
+    const top = Array.from(probabilities, (score, index) => ({
+      index,
+      score
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 5);
+
+    $("results").innerHTML = "";
+
+    for (const item of top) {
+      const row = document.createElement("div");
+      row.className = "result";
+
+      const name = document.createElement("span");
+      name.textContent = labels[item.index] || ("Класс " + item.index);
+
+      const score = document.createElement("span");
+      score.className = "score";
+      score.textContent = (item.score * 100).toFixed(2) + "%";
+
+      row.append(name, score);
+      $("results").appendChild(row);
     }
-
-    if (resultTensor.data.length !== 1000) {
-      throw new Error(
-        "Ожидалось 1000 классов, получено: " +
-        resultTensor.data.length
-      );
-    }
-
-    const results = getTopResults(resultTensor);
-
-    displayResults(results);
 
     log("Распознавание завершено.");
-    log("Время inference: " + elapsed.toFixed(1) + " ms");
-    log("Количество классов: " + resultTensor.data.length);
-    log("Лучший результат: " + results[0].score.toFixed(4));
-
-    status(
-      "УСПЕХ — MobileNetV2 / WASM",
-      "good"
-    );
-
+    status("Готово.");
   } catch (error) {
-    status("ОШИБКА", "bad");
-    log("ОШИБКА: " + (error.message || String(error)));
-
-    console.error(error);
-
-    if (session) {
-      try {
-        await session.release();
-      } catch(e) {}
-
-      session = null;
-    }
-
+    status("Ошибка распознавания.");
+    log("ОШИБКА: " + error.stack);
+    $("results").textContent = error.message;
   } finally {
-    busy = false;
-    $("run").disabled = !selectedImage;
+    $("run").disabled = !session || !selectedImage;
   }
 }
 
-// Выбор фотографии.
-$("photo").addEventListener("change", event => {
-  const file = event.target.files[0];
+$("run").addEventListener("click", classify);
 
-  if (!file) return;
-
-  if (!file.type.startsWith("image/")) {
-    status("Выбранный файл не является изображением.", "bad");
-    return;
-  }
-
-  if (selectedImage && selectedImage.src) {
-    URL.revokeObjectURL(selectedImage.src);
-  }
-
-  const url = URL.createObjectURL(file);
-
-  const image = new Image();
-
-  image.onload = () => {
-    selectedImage = image;
-
-    $("preview").src = url;
-    $("preview").style.display = "block";
-
-    $("fileInfo").textContent =
-      file.name + " · " +
-      image.naturalWidth + " × " +
-      image.naturalHeight;
-
-    $("run").disabled = false;
-
-    status("Фотография готова к распознаванию.", "good");
-    log("Фотография загружена.");
-  };
-
-  image.onerror = () => {
-    status("Не удалось открыть фотографию.", "bad");
-    log("Ошибка декодирования изображения.");
-    URL.revokeObjectURL(url);
-  };
-
-  image.src = url;
-});
-
-$("run").addEventListener("click", recognize);
-
+initialize();
 </script>
 </body>
 </html>
