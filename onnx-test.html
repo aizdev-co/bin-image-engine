@@ -4,33 +4,46 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BIN — MobileNet Benchmark</title>
+<title>BIN — MobileNet Benchmark 2</title>
 <style>
 * { box-sizing: border-box; }
 body {
-  background:#101116;color:#f2f3f7;
+  background:#101116;
+  color:#f2f3f7;
   font-family:-apple-system,sans-serif;
-  padding:22px;margin:0;
+  padding:22px;
+  margin:0;
 }
-main { max-width:650px;margin:auto; }
-p { color:#adb3c2;line-height:1.5; }
+main { max-width:650px; margin:auto; }
+p { color:#adb3c2; line-height:1.5; }
 button {
-  width:100%;padding:18px;margin:9px 0;
-  border:0;border-radius:14px;
-  background:#7455e8;color:white;
-  font-size:17px;font-weight:700;
+  width:100%;
+  padding:18px;
+  margin:9px 0;
+  border:0;
+  border-radius:14px;
+  background:#7455e8;
+  color:white;
+  font-size:17px;
+  font-weight:700;
 }
 button:disabled { opacity:.45; }
 .panel {
-  background:#1b1d26;border:1px solid #343743;
-  border-radius:16px;padding:20px;margin-top:18px;
+  background:#1b1d26;
+  border:1px solid #343743;
+  border-radius:16px;
+  padding:20px;
+  margin-top:18px;
 }
 pre {
-  white-space:pre-wrap;overflow-wrap:anywhere;
-  color:#c2cada;font-size:13px;line-height:1.6;
+  white-space:pre-wrap;
+  overflow-wrap:anywhere;
+  color:#c2cada;
+  font-size:13px;
+  line-height:1.6;
 }
-.good {color:#8ce5ad;}
-.bad {color:#ff8585;}
+.good { color:#8ce5ad; }
+.bad { color:#ff8585; }
 </style>
 </head>
 <body>
@@ -84,7 +97,7 @@ async function test(provider) {
 
     ort.env.wasm.wasmPaths = CDN;
 
-    log("ONNX Runtime загружен.");
+    log("ONNX Runtime: " + ort.version);
     log("Backend: " + provider);
 
     if (!modelBytes) {
@@ -93,25 +106,32 @@ async function test(provider) {
       const response = await fetch(MODEL);
 
       if (!response.ok) {
-        throw new Error("HTTP " + response.status +
-          " при скачивании модели.");
+        throw new Error("HTTP " + response.status);
       }
 
       modelBytes = await response.arrayBuffer();
 
       log("Размер модели: " +
-        (modelBytes.byteLength / 1048576).toFixed(2) +
-        " MB");
+        (modelBytes.byteLength / 1048576).toFixed(2) + " MB");
     }
 
     log("Создаю inference session...");
+
     const sessionStart = performance.now();
 
     session = await ort.InferenceSession.create(
       modelBytes,
       {
         executionProviders: [provider],
-        graphOptimizationLevel: "all"
+        graphOptimizationLevel: "all",
+
+        // Фиксируем динамические размеры модели
+        freeDimensionOverrides: {
+          batch: 1,
+          channels: 3,
+          height: 224,
+          width: 224
+        }
       }
     );
 
@@ -124,18 +144,18 @@ async function test(provider) {
     log("Вход: " + inputName);
     log("Выход: " + outputName);
 
-    // MobileNetV2: RGB, 224 × 224, формат NCHW
     const dims = [1, 3, 224, 224];
     const count = 1 * 3 * 224 * 224;
     const data = new Float32Array(count);
 
-    // Детерминированный тестовый вход
     for (let i = 0; i < count; i++) {
       data[i] = ((i * 17) % 255) / 255;
     }
 
     const input = new ort.Tensor(
-      "float32", data, dims
+      "float32",
+      data,
+      dims
     );
 
     log("Входной тензор: " + dims.join(" × "));
@@ -177,7 +197,8 @@ async function test(provider) {
       times.reduce((a,b) => a+b, 0) / times.length;
 
     log("Среднее время: " + average.toFixed(1) + " ms");
-    log("Лучшее время: " + Math.min(...times).toFixed(1) + " ms");
+    log("Лучшее время: " +
+      Math.min(...times).toFixed(1) + " ms");
 
     $("status").textContent =
       "УСПЕХ — " + provider.toUpperCase();
@@ -190,8 +211,11 @@ async function test(provider) {
     console.error(e);
   } finally {
     if (session) {
-      try { await session.release(); }
-      catch(e) { log("Ошибка закрытия: " + e.message); }
+      try {
+        await session.release();
+      } catch(e) {
+        log("Ошибка закрытия: " + e.message);
+      }
     }
 
     busy = false;
