@@ -1,0 +1,222 @@
+
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>BIN — WebGL2 Diagnostic</title>
+<style>
+* { box-sizing: border-box; }
+body {
+  margin: 0; padding: 22px;
+  background: #101116; color: #f2f3f7;
+  font-family: -apple-system, sans-serif;
+}
+main { max-width: 650px; margin: auto; }
+h1 { font-size: 27px; }
+p { color: #aeb3c1; line-height: 1.5; }
+button {
+  width: 100%; padding: 17px; margin: 14px 0;
+  border: 0; border-radius: 13px;
+  background: #7455e8; color: white;
+  font-size: 17px; font-weight: 700;
+}
+.panel {
+  background: #1b1d26; border: 1px solid #30333e;
+  border-radius: 16px; padding: 18px; margin-top: 15px;
+}
+.result {
+  display: flex; justify-content: space-between;
+  gap: 12px; padding: 13px 0;
+  border-bottom: 1px solid #343743;
+}
+.result:last-child { border: 0; }
+.value { text-align: right; font-weight: 700; }
+.good { color: #8ce5ad; }
+.bad { color: #ff8585; }
+canvas {
+  width: 100%; height: 210px;
+  background: #090a0d; border-radius: 12px;
+  margin-top: 12px;
+}
+pre {
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  color: #c9d0df; font-size: 12px; line-height: 1.5;
+}
+</style>
+</head>
+<body>
+<main>
+  <h1>BIN IMAGE ENGINE</h1>
+  <p>Тест графического ускорения WebGL 2 на устройстве.</p>
+
+  <button id="run">ЗАПУСТИТЬ WEBGL2 ТЕСТ</button>
+
+  <section class="panel">
+    <h2>Результаты</h2>
+    <div class="result">
+      <span>WebGL 2</span>
+      <span id="support" class="value">Ожидание</span>
+    </div>
+    <div class="result">
+      <span>Шейдеры</span>
+      <span id="shaders" class="value">Ожидание</span>
+    </div>
+    <div class="result">
+      <span>GPU-рендеринг</span>
+      <span id="render" class="value">Ожидание</span>
+    </div>
+    <div class="result">
+      <span>Макс. размер текстуры</span>
+      <span id="texture" class="value">—</span>
+    </div>
+    <div class="result">
+      <span>Макс. размер viewport</span>
+      <span id="viewport" class="value">—</span>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>Тестовый рендер</h2>
+    <canvas id="screen" width="512" height="256"></canvas>
+    <p id="visual">Треугольник пока не отрисован.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Журнал</h2>
+    <pre id="log">Ожидание запуска...</pre>
+  </section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+
+function status(id, text, ok) {
+  $(id).textContent = text;
+  $(id).className = "value " + (ok ? "good" : "bad");
+}
+
+function log(message) {
+  $("log").textContent += "\n" + message;
+}
+
+$("run").addEventListener("click", () => {
+  $("log").textContent = "Начинаю диагностику WebGL 2...";
+  $("visual").textContent = "Выполняется тест...";
+
+  const canvas = $("screen");
+  const gl = canvas.getContext("webgl2", {
+    alpha: false,
+    antialias: false,
+    powerPreference: "high-performance"
+  });
+
+  if (!gl) {
+    status("support", "Недоступен", false);
+    status("shaders", "Не проверены", false);
+    status("render", "Не выполнен", false);
+    log("WebGL 2 context получить не удалось.");
+    $("visual").textContent = "Рендеринг недоступен.";
+    return;
+  }
+
+  status("support", "Доступен", true);
+  log("WebGL 2 context получен.");
+
+  try {
+    const maxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    const maxViewport = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
+
+    $("texture").textContent = maxTexture + " px";
+    $("viewport").textContent =
+      maxViewport[0] + " × " + maxViewport[1];
+
+    const vertexSource = `#version 300 es
+      in vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }`;
+
+    const fragmentSource = `#version 300 es
+      precision highp float;
+      out vec4 color;
+      void main() {
+        color = vec4(0.25, 0.9, 0.55, 1.0);
+      }`;
+
+    function compile(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        const error = gl.getShaderInfoLog(shader);
+        gl.deleteShader(shader);
+        throw new Error(error);
+      }
+      return shader;
+    }
+
+    const vertex = compile(gl.VERTEX_SHADER, vertexSource);
+    const fragment = compile(gl.FRAGMENT_SHADER, fragmentSource);
+
+    const program = gl.createProgram();
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      throw new Error(gl.getProgramInfoLog(program));
+    }
+
+    status("shaders", "Успешно", true);
+    log("Vertex и fragment shaders скомпилированы.");
+    log("GPU program успешно создана.");
+
+    const vertices = new Float32Array([
+       0.0,  0.75,
+      -0.7, -0.65,
+       0.7, -0.65
+    ]);
+
+    const buffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+    gl.useProgram(program);
+
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    gl.clearColor(0.04, 0.05, 0.08, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+
+    const error = gl.getError();
+    if (error !== gl.NO_ERROR) {
+      throw new Error("WebGL error: " + error);
+    }
+
+    status("render", "Успешно", true);
+    $("visual").textContent = "Треугольник успешно отрисован!";
+    log("GPU draw call выполнен.");
+    log("GL error: NONE");
+    log("Тест завершён успешно.");
+
+    gl.deleteBuffer(buffer);
+    gl.deleteProgram(program);
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+
+  } catch (error) {
+    status("shaders", "Ошибка", false);
+    status("render", "Ошибка", false);
+    $("visual").textContent = "Ошибка рендеринга.";
+    log("ОШИБКА: " + error.message);
+  }
+});
+</script>
+</body>
+</html>
