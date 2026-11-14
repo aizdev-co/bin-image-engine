@@ -4,112 +4,73 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>BIN — ONNX Test</title>
-
+<title>BIN — MobileNet Benchmark</title>
 <style>
 * { box-sizing: border-box; }
-
 body {
-  background: #101116;
-  color: #f2f3f7;
-  font-family: -apple-system, sans-serif;
-  padding: 22px;
-  margin: 0;
+  background:#101116;color:#f2f3f7;
+  font-family:-apple-system,sans-serif;
+  padding:22px;margin:0;
 }
-
-main {
-  max-width: 650px;
-  margin: auto;
-}
-
-p {
-  color: #aeb3c1;
-  line-height: 1.5;
-}
-
+main { max-width:650px;margin:auto; }
+p { color:#adb3c2;line-height:1.5; }
 button {
-  width: 100%;
-  padding: 18px;
-  margin: 9px 0;
-  border: 0;
-  border-radius: 14px;
-  background: #7455e8;
-  color: white;
-  font-size: 17px;
-  font-weight: 700;
+  width:100%;padding:18px;margin:9px 0;
+  border:0;border-radius:14px;
+  background:#7455e8;color:white;
+  font-size:17px;font-weight:700;
 }
-
-button:disabled {
-  opacity: 0.5;
-}
-
+button:disabled { opacity:.45; }
 .panel {
-  background: #1b1d26;
-  border: 1px solid #343743;
-  border-radius: 16px;
-  padding: 20px;
-  margin-top: 18px;
+  background:#1b1d26;border:1px solid #343743;
+  border-radius:16px;padding:20px;margin-top:18px;
 }
-
 pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-  color: #bfc9d9;
-  font-size: 13px;
-  line-height: 1.55;
+  white-space:pre-wrap;overflow-wrap:anywhere;
+  color:#c2cada;font-size:13px;line-height:1.6;
 }
-
-.good { color: #8ce5ad; }
-.bad { color: #ff8585; }
+.good {color:#8ce5ad;}
+.bad {color:#ff8585;}
 </style>
 </head>
-
 <body>
 <main>
-
 <h1>BIN IMAGE ENGINE</h1>
+<p>MobileNetV2 — тест производительности iPhone.</p>
 
-<p>
-Проверка реального запуска ONNX-модели на iPhone.
-</p>
-
-<button id="webgl">ЗАПУСТИТЬ ЧЕРЕЗ WEBGL</button>
-<button id="wasm">ЗАПУСТИТЬ ЧЕРЕЗ WASM (CPU)</button>
+<button id="wasm">ЗАПУСТИТЬ WASM (CPU)</button>
+<button id="webgl">ЗАПУСТИТЬ WEBGL</button>
 
 <section class="panel">
 <h2>Результат</h2>
 <p id="status">Ожидание теста...</p>
-<pre id="log">ONNX Runtime пока не загружен.</pre>
+<pre id="log">Модель ещё не загружена.</pre>
 </section>
-
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
-
 <script>
 const $ = id => document.getElementById(id);
 
 const MODEL =
-"https://cdn.jsdelivr.net/gh/microsoft/onnxruntime-inference-examples@main/c_cxx/MNIST/mnist.onnx";
+"https://huggingface.co/webnn/mobilenet-v2/resolve/main/onnx/mobilenetv2-10.onnx";
 
 const CDN =
 "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/";
 
 let modelBytes = null;
-let running = false;
+let busy = false;
 
-function log(message) {
-  $("log").textContent += "\n" + message;
+function log(s) {
+  $("log").textContent += "\n" + s;
 }
 
-async function runTest(provider) {
+async function test(provider) {
+  if (busy) return;
+  busy = true;
 
-  if (running) return;
-  running = true;
-
-  $("webgl").disabled = true;
   $("wasm").disabled = true;
-
+  $("webgl").disabled = true;
   $("log").textContent = "Начинаю тест...";
   $("status").textContent = "Выполняется...";
   $("status").className = "";
@@ -117,40 +78,34 @@ async function runTest(provider) {
   let session = null;
 
   try {
-
     if (!window.ort) {
-      throw new Error(
-        "ONNX Runtime не загрузился. Проверь интернет."
-      );
+      throw new Error("ONNX Runtime не загрузился.");
     }
 
     ort.env.wasm.wasmPaths = CDN;
 
-    log("ONNX Runtime: библиотека загружена");
-    log("Execution Provider: " + provider);
+    log("ONNX Runtime загружен.");
+    log("Backend: " + provider);
 
     if (!modelBytes) {
-
-      log("Скачиваю тестовую модель MNIST...");
+      log("Скачиваю MobileNetV2...");
 
       const response = await fetch(MODEL);
 
       if (!response.ok) {
-        throw new Error(
-          "Ошибка загрузки модели: HTTP " + response.status
-        );
+        throw new Error("HTTP " + response.status +
+          " при скачивании модели.");
       }
 
       modelBytes = await response.arrayBuffer();
 
-      log(
-        "Модель загружена: " +
-        (modelBytes.byteLength / 1024).toFixed(1) +
-        " KB"
-      );
+      log("Размер модели: " +
+        (modelBytes.byteLength / 1048576).toFixed(2) +
+        " MB");
     }
 
     log("Создаю inference session...");
+    const sessionStart = performance.now();
 
     session = await ort.InferenceSession.create(
       modelBytes,
@@ -160,100 +115,93 @@ async function runTest(provider) {
       }
     );
 
-    log("Сессия создана.");
+    log("Сессия создана за " +
+      (performance.now() - sessionStart).toFixed(1) + " ms");
 
     const inputName = session.inputNames[0];
     const outputName = session.outputNames[0];
 
-    if (!inputName || !outputName) {
-      throw new Error("Не удалось определить вход или выход модели.");
-    }
+    log("Вход: " + inputName);
+    log("Выход: " + outputName);
 
-    log("Входы: " + session.inputNames.join(", "));
-    log("Выходы: " + session.outputNames.join(", "));
+    // MobileNetV2: RGB, 224 × 224, формат NCHW
+    const dims = [1, 3, 224, 224];
+    const count = 1 * 3 * 224 * 224;
+    const data = new Float32Array(count);
 
-    // MNIST: один канал, изображение 28 × 28
-    const dims = [1, 1, 28, 28];
-
-    const count = dims.reduce(
-      (a, b) => a * b, 1
-    );
-
-    // Тестовое изображение с небольшими ненулевыми значениями
-    const inputData = new Float32Array(count);
-
+    // Детерминированный тестовый вход
     for (let i = 0; i < count; i++) {
-      inputData[i] = 0;
+      data[i] = ((i * 17) % 255) / 255;
     }
 
     const input = new ort.Tensor(
-      "float32",
-      inputData,
-      dims
+      "float32", data, dims
     );
 
     log("Входной тензор: " + dims.join(" × "));
-    log("Создан тестовый вход.");
-    log("Выполняю inference...");
+    log("Прогрев модели...");
 
-    const start = performance.now();
-
-    const output = await session.run({
+    await session.run({
       [inputName]: input
     });
 
-    const elapsed = performance.now() - start;
+    log("Прогрев завершён.");
+    log("Запускаю 3 измерения...");
 
-    const result = output[outputName];
+    const times = [];
 
-    if (!result) {
-      throw new Error("Модель не вернула ожидаемый выход.");
+    for (let i = 0; i < 3; i++) {
+      const start = performance.now();
+
+      const result = await session.run({
+        [inputName]: input
+      });
+
+      const elapsed = performance.now() - start;
+      times.push(elapsed);
+
+      const output = result[outputName];
+
+      if (!output) {
+        throw new Error("Выходной тензор отсутствует.");
+      }
+
+      log("Запуск " + (i + 1) + ": " +
+        elapsed.toFixed(1) + " ms");
+
+      log("Размер выхода: " +
+        output.dims.join(" × "));
     }
 
-    log("Вычисление завершено!");
-    log("Время: " + elapsed.toFixed(1) + " ms");
-    log("Размер выхода: " + result.dims.join(" × "));
+    const average =
+      times.reduce((a,b) => a+b, 0) / times.length;
 
-    log(
-      "Первые значения: " +
-      Array.from(result.data.slice(0, 10))
-        .map(x => Number(x).toFixed(4))
-        .join(", ")
-    );
+    log("Среднее время: " + average.toFixed(1) + " ms");
+    log("Лучшее время: " + Math.min(...times).toFixed(1) + " ms");
 
     $("status").textContent =
       "УСПЕХ — " + provider.toUpperCase();
-
     $("status").className = "good";
 
-  } catch (error) {
-
+  } catch (e) {
     $("status").textContent = "ОШИБКА";
     $("status").className = "bad";
-
-    log("ОШИБКА: " + (error.message || String(error)));
-
-    console.error(error);
-
+    log("ОШИБКА: " + (e.message || String(e)));
+    console.error(e);
   } finally {
-
     if (session) {
-      try {
-        await session.release();
-      } catch (e) {
-        log("Предупреждение при закрытии сессии: " + e.message);
-      }
+      try { await session.release(); }
+      catch(e) { log("Ошибка закрытия: " + e.message); }
     }
 
-    running = false;
-    $("webgl").disabled = false;
+    busy = false;
     $("wasm").disabled = false;
+    $("webgl").disabled = false;
   }
 }
 
-$("webgl").onclick = () => runTest("webgl");
-$("wasm").onclick = () => runTest("wasm");
-
+$("wasm").onclick = () => test("wasm");
+$("webgl").onclick = () => test("webgl");
 </script>
 </body>
 </html>
